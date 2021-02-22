@@ -1,0 +1,44 @@
+ requirejs(
+        ['video', 'videojs-seek-buttons', 'videojs-hls-quality-selector', 'videojs-contrib-quality-levels'],
+         function(videojs) {
+                    var player = videojs("player", {
+                    controls: true,
+                    autoplay: true,
+                    preload:true,
+                    playbackRates: [0.25, 0.5, 0.75, 1, 1.5, 2, 4],
+                    height: window.innerHeight,
+                    width: window.innerWidth,
+                    html5: {  
+                    nativeAudioTracks: false,
+                    nativeVideoTracks: false,
+                    hls: {
+                    debug: true,
+                    overrideNative: true
+                    }
+                    }     
+                    });
+    
+    var prefix = "key://";
+    var urlTpl = "getKey.php";
+    // player.ready
+    player.on("loadstart", function (e) {
+        player.tech().hls.xhr.beforeRequest = function(options) {
+            // required for detecting only the key requests
+            //console.log('Options URI ' + options.uri)
+            //console.log('P '+ options.uri.substring(prefix.length));
+            if (!options.uri.startsWith(prefix)) { return; }
+            options.headers = options.headers || {};
+            options.headers["KeyNum"] = atob(options.uri.substring(prefix.length));      
+            options.uri = urlTpl;
+        };
+    });
+
+    player.seekButtons({
+    forward: 30,
+    back: 10
+    });
+
+    player.hlsQualitySelector({
+    displayCurrentQuality: false,
+    });
+});

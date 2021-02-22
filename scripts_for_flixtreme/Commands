@@ -1,0 +1,13 @@
+
+ffmpeg -y ^
+    -i "F:\TV Series\Suits.S01.Season.1.720p.Web-DL.ReEnc-DeeJayAhmed\Suits.S01E12.720p.Web-DL.ReEnc-DeeJayAhmed.mkv" ^
+    -vf scale=w=842:h=480:force_original_aspect_ratio=decrease ^
+    -vf "scale=trunc(iw/2)*2:trunc(ih/2)*2" ^
+    -c:a aac -ar 48000 -c:v h264 -profile:v main -crf 20 -sc_threshold 0 -g 48 -keyint_min 48 ^
+    -hls_time 9 ^
+    -hls_flags periodic_rekey ^
+    -hls_key_info_file D:\xampp\htdocs\owncloud\data\admin\files\keys\enc.keyinfo ^
+    -hls_playlist_type vod ^
+    -b:v 1400k -maxrate 1498k -bufsize 2100k -b:a 128k ^
+    -hls_segment_filename "D:\xampp\htdocs\owncloud\data\admin\files\media\suits\1\12\segment%d.ts" ^
+    "D:\xampp\htdocs\owncloud\data\admin\files\media\suits\1\12\master.m3u8"

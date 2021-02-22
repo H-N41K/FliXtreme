@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang='`en'>
+<head>
+    <meta charset='utf-8'/>
+    <title>Audio only stream example</title>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <style>
+        video {
+            width: 640px;
+            height: 360px;
+        }
+    </style>
+</head>
+<body>
+    <h1>HLS/<code>ffmpeg</code></h1>
+    <div>
+        Put this file together with <code>video.mkv</code> in a directory, and
+        serve that directory with any web server.
+    </div>
+    <div>
+        <ul>
+            <li>
+                <a href='https://www.ffmpeg.org/documentation.html'>ffmpeg docs</a>
+            </li>
+            <li>
+                <a href='https://trac.ffmpeg.org/wiki/Encode/H.264'>h264 presets. profiles, etc</a>
+            </li>
+            <li>
+                <a href='https://blog.twitch.tv/live-video-transmuxing-transcoding-ffmpeg-vs-twitchtranscoder-part-i-489c1c125f28'>
+                    Twitch Post on why they do not use ffmpeg
+                </a>
+            </li>
+            <li>
+                The <code>-hls_time</code> option still waits for the next
+                keyframe in the video. To make the hls segments less than 10
+                seconds, I need to figure out how to adjust the keyframes.
+            </li>
+            <li>
+                I tried using in the <code>-x264-params "keyint=x:min-keyint=y"
+                </code> option to set change the keyframe frequency (described in
+                <a href='https://superuser.com/questions/908280/what-is-the-correct-way-to-fix-keyframes-in-ffmpeg-for-dash'>this superuser post</a>),
+                but didn't have any luck. Another 
+                <a href='https://stackoverflow.com/questions/28906259/ffmpeg-hls-live-streaming-how-to-generate-shorter-segments'>stackoverflow</a>
+                post said you need to use the <code>-g</code> option. 
+            </li>
+            <li>
+                It looks like we can use the <code>-g</code> and
+                <code>-flags +cgop</code> options to enable smaller chunk
+                segment sizes. This was also giving me some artifacts. These are
+                documented in the ffmpeg <a href='https://www.ffmpeg.org/ffmpeg-codecs.html#Codec-Options'>codec docs</a>
+            </li>
+            <li>
+                <code>-hls_list_size</code> is the number of segments that
+                will be listed in the playist file.
+            </li>
+            <li>
+                <code>-hls_wrap</code> is the point where the segment filenames
+                will wrap. Obviously, wrap needs to be greater than
+                <code>-hls_list_size</code>. 
+            </li>
+            <li>
+                It looks like the <code>-flags global_header</code> option is
+                undesirable. When I enabled it, the video would only play iff
+                the first segment was in the playlist file.
+            </li>
+            <li>
+                A few times, I've messed up, because the browser caches the
+                playlist file, and this causes all sorts of issues. You can
+                disable the cache in the browser, OR configure the http server
+                to not cache files. The <code>-c-1</code>  flag does this in 
+                npm <code>node-server</code>.
+            </li>
+        </ul>
+    </div>
+    <h2>Live Stream Audio and Video via DASH</h2>
+    <pre>
+ffmpeg -v verbose \
+    -re \
+    -i video.mkv \
+    -c:v libx264 \
+    -b:v 5000k \
+    -f hls \
+    -hls_time 6 \
+    -hls_list_size 4 \
+    -hls_wrap 40 \
+    -hls_delete_threshold 1 \
+    -hls_flags delete_segments \
+    -hls_start_number_source datetime \
+    -preset superfast \
+    -start_number 10 \
+    ./stream.m3u8
+    </pre>
+    <div>
+        <!-- <button onclick='start("audio")'>audio</button> -->
+        <button onclick='start()'>video</button>
+        <button onclick='stop()'>stop</button>
+    </div>
+    <video controls src="stream.m3u8"></video>
+
+<script>
+    var url = '/stream.m3u8';
+    var element;
+    var player;
+
+    var log = function(text) {
+        console.log(text);
+        var e = document.createElement('div');
+        e.innerHTML = text;
+        document.body.appendChild(e);
+    }
+
+    var start = window.start = function ()  {
+        stop();
+        // Create a video element
+        element = window.element = document.createElement('video');
+        document.body.appendChild(element);
+
+        if (Hls.isSupported()) {
+            player = new Hls();
+            player.attachMedia(element);
+            player.on(Hls.Events.MEDIA_ATTACHED, function() {
+                log('bound hls to DOM element');
+                player.loadSource(url);
+                player.on(Hls.Events.MANIFEST_PARSED, function(event, data) {
+                    log('manifest loaded with ' + data.levels.length + ' quality level(s)');
+                    element.play();
+                });
+            });
+            player.on(Hls.Events.ERROR, function (event, data) {
+                var errorType = data.type;
+                var errorDetails = data.details;
+                var errorFatal = data.fatal;
+
+                switch(data.details) {
+                case Hls.ErrorDetails.FRAG_LOAD_ERROR:
+                    log('error: FRAG_LOAD_ERROR'); debugger;
+                    break;
+                case Hls.ErrorDetails.MEDIA_ERROR:
+                    log('error: MEDIA_ERROR'); debugger;
+                    break;
+                case Hls.ErrorDetails.OTHER_ERROR:
+                    log('error" OTHER_ERROR'); debugger;
+                    break;
+                default:
+                    log('default error:??')
+                    break;
+                }
+            });
+        } 
+        else if (element.canPlayType('application/vnd.apple.mpegurl') !== '') {
+            element.src = url;
+            element.addEventListener('loadedmetadata', function() {
+                element.play();
+            });
+        } else {
+            throw new Error('hls not supported');
+        }
+    };
+
+    var stop = window.stop = function() {
+        if (element) {
+            element.pause();
+            element.parentNode.removeChild(element);
+            element = null;
+            player = null;
+        }
+    };
+
+    document.addEventListener("DOMContentLoaded", function() {log('hello!');});
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+ffmpeg -y ^
+    -i "E:\Movies\Mechanic Resurrection (2016) [YTS.AG]\Mechanic.Resurrection.2016.720p.BluRay.x264-[YTS.AG].mp4" ^
+    -i "E:\Movies\Mechanic Resurrection (2016) [YTS.AG]\Mechanic.Resurrection.2016.720p.BluRay.x264-[YTS.AG].srt" ^
+    -i overlay3.png -filter_complex "overlay=main_w-overlay_w-10:10" ^
+    -c:a aac -ar 48000 -c:v h264 -profile:v main -crf 20 -sc_threshold 0 ^ -g 48 -keyint_min 48 ^
+    -hls_time 5 ^
+    -speed 1.05 ^
+    -hls_flags periodic_rekey ^
+    -hls_playlist_type vod ^
+    -hls_key_info_file D:\xampp\htdocs\owncloud\data\admin\files\keys\enc.keyinfo ^
+    -hls_list_size 20 ^
+    -hls_flags delete_segments ^
+    -b:v 1400k -maxrate 1498k -bufsize 2100k -b:a 128k ^
+    -hls_segment_filename "stream%d.ts" ^
+    "stream.m3u8"
